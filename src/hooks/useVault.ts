@@ -1,68 +1,211 @@
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { ethers } from 'ethers';
 import { WalletState } from './useWallet';
 
+// Vault ABI - ERC4626 standard functions
 const VAULT_ABI = [
+  // ERC4626 functions
   'function deposit(uint256 assets, address receiver) returns (uint256 shares)',
+  'function mint(uint256 shares, address receiver) returns (uint256 assets)',
   'function withdraw(uint256 assets, address receiver, address owner) returns (uint256 shares)',
   'function redeem(uint256 shares, address receiver, address owner) returns (uint256 assets)',
   'function totalAssets() view returns (uint256)',
-  'function totalSupply() view returns (uint256)',
-  'function balanceOf(address account) view returns (uint256)',
   'function convertToShares(uint256 assets) view returns (uint256)',
   'function convertToAssets(uint256 shares) view returns (uint256)',
   'function previewDeposit(uint256 assets) view returns (uint256)',
-  'function previewWithdraw(uint256 assets) view returns (uint256)'
+  'function previewMint(uint256 shares) view returns (uint256)',
+  'function previewWithdraw(uint256 assets) view returns (uint256)',
+  'function previewRedeem(uint256 shares) view returns (uint256)',
+  'function maxDeposit(address) view returns (uint256)',
+  'function maxMint(address) view returns (uint256)',
+  'function maxWithdraw(address owner) view returns (uint256)',
+  'function maxRedeem(address owner) view returns (uint256)',
+  
+  // ERC20 functions
+  'function balanceOf(address account) view returns (uint256)',
+  'function allowance(address owner, address spender) view returns (uint256)',
+  'function approve(address spender, uint256 amount) returns (bool)',
+  'function decimals() view returns (uint8)',
+  'function symbol() view returns (string)',
+  'function name() view returns (string)',
+  
+  // Vault specific functions
+  'function getVaultInfo() view returns (uint256 totalAssetsValue, uint256 totalAllocatedValue, uint256 activeStrategiesCount)',
+  'function getActiveStrategies() view returns (address[])',
+  'function getStrategyInfo(address strategy) view returns (string name, uint256 allocatedAmount, bool isActive, uint256 performanceFee, uint256 lastHarvest)',
+  'function totalAllocated() view returns (uint256)',
+  'function performanceFeeRate() view returns (uint256)',
+  'function managementFeeRate() view returns (uint256)',
+  
+  // Events
+  'event Deposit(address indexed caller, address indexed owner, uint256 assets, uint256 shares)',
+  'event Withdraw(address indexed caller, address indexed receiver, address indexed owner, uint256 assets, uint256 shares)',
+  'event StrategyAdded(address indexed strategy, string name)',
+  'event StrategyRemoved(address indexed strategy)',
+  'event YieldGenerated(uint256 amount)',
+  'event FeeCollected(uint256 amount)'
 ];
 
-export interface VaultStats {
+// Asset ABI (for underlying token)
+const ASSET_ABI = [
+  'function balanceOf(address account) view returns (uint256)',
+  'function allowance(address owner, address spender) view returns (uint256)',
+  'function approve(address spender, uint256 amount) returns (bool)',
+  'function decimals() view returns (uint8)',
+  'function symbol() view returns (string)',
+  'function name() view returns (string)'
+];
+
+export interface VaultInfo {
   totalAssets: string;
-  totalShares: string;
-  sharePrice: string;
-  userShares: string;
-  userAssets: string;
-  apy: string;
+  totalAllocated: string;
+  activeStrategiesCount: number;
+  vaultTokenBalance: string;
+  assetBalance: string;
+  assetAllowance: string;
+  maxDeposit: string;
+  maxWithdraw: string;
+  performanceFeeRate: string;
+  managementFeeRate: string;
+}
+
+export interface StrategyInfo {
+  address: string;
+  name: string;
+  allocatedAmount: string;
+  isActive: boolean;
+  performanceFee: string;
+  lastHarvest: string;
+}
+
+export interface VaultState {
+  vaultAddress: string;
+  assetAddress: string;
+  vaultInfo: VaultInfo | null;
+  strategies: StrategyInfo[];
+  loading: boolean;
+  error: string | null;
 }
 
 export function useVault(wallet: WalletState) {
-  const [loading, setLoading] = useState(false);
-  const [vaultStats, setVaultStats] = useState<VaultStats>({
-    totalAssets: '2456789.50',
-    totalShares: '2073456.78',
-    sharePrice: '1.184',
-    userShares: '4237.89',
-    userAssets: '5016.71',
-    apy: '18.4'
+  const [vaultState, setVaultState] = useState<VaultState>({
+    vaultAddress: '0x0000000000000000000000000000000000000000', // Replace with actual vault address
+    assetAddress: '0x0000000000000000000000000000000000000000', // Replace with actual asset address
+    vaultInfo: null,
+    strategies: [],
+    loading: false,
+    error: null
   });
 
-  // Mock vault address - in production this would be the deployed contract
-  const VAULT_ADDRESS = '0x1234567890123456789012345678901234567890';
+  const [loading, setLoading] = useState(false);
 
-  const deposit = async (amount: string, tokenAddress: string) => {
-    if (!wallet.signer) throw new Error('Wallet not connected');
+  // Get provider and signer
+  const getProvider = useCallback(async () => {
+    if (!window.ethereum) throw new Error('No wallet provider');
+    return new ethers.BrowserProvider(window.ethereum);
+  }, []);
+
+  const getSigner = useCallback(async () => {
+    const provider = await getProvider();
+    return provider.getSigner();
+  }, [getProvider]);
+
+  // Fetch vault information
+  const fetchVaultInfo = useCallback(async () => {
+    if (!wallet.isConnected || !vaultState.vaultAddress) return;
 
     setLoading(true);
     try {
-      // In a real implementation, this would interact with the actual vault contract
-      // For demo purposes, we'll simulate the transaction
-      
-      const tx = await wallet.signer.sendTransaction({
-        to: VAULT_ADDRESS,
-        value: ethers.parseEther('0'), // For ERC20 deposits, this would be 0
-        data: '0x' // This would contain the encoded function call
-      });
+      const provider = await getProvider();
+      const vaultContract = new ethers.Contract(vaultState.vaultAddress, VAULT_ABI, provider);
+      const assetContract = new ethers.Contract(vaultState.assetAddress, ASSET_ABI, provider);
 
-      // Simulate transaction confirmation
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      // Update mock stats
-      const newUserShares = parseFloat(vaultStats.userShares) + (parseFloat(amount) / parseFloat(vaultStats.sharePrice));
-      setVaultStats(prev => ({
+      // Get vault info
+      const [vaultInfo, assetBalance, assetAllowance, maxDeposit, maxWithdraw, performanceFee, managementFee] = await Promise.all([
+        vaultContract.getVaultInfo(),
+        assetContract.balanceOf(wallet.address),
+        assetContract.allowance(wallet.address, vaultState.vaultAddress),
+        vaultContract.maxDeposit(wallet.address),
+        vaultContract.maxWithdraw(wallet.address),
+        vaultContract.performanceFeeRate(),
+        vaultContract.managementFeeRate()
+      ]);
+
+      // Get vault token balance
+      const vaultTokenBalance = await vaultContract.balanceOf(wallet.address);
+
+      // Get strategies
+      const activeStrategies = await vaultContract.getActiveStrategies();
+      const strategies = await Promise.all(
+        activeStrategies.map(async (strategyAddress: string) => {
+          const strategyInfo = await vaultContract.getStrategyInfo(strategyAddress);
+          return {
+            address: strategyAddress,
+            name: strategyInfo[0],
+            allocatedAmount: ethers.formatUnits(strategyInfo[1], 6), // Assuming 6 decimals for USDC
+            isActive: strategyInfo[2],
+            performanceFee: ethers.formatUnits(strategyInfo[3], 2), // Basis points
+            lastHarvest: new Date(Number(strategyInfo[4]) * 1000).toLocaleString()
+          };
+        })
+      );
+
+      setVaultState(prev => ({
         ...prev,
-        userShares: newUserShares.toFixed(2),
-        userAssets: (newUserShares * parseFloat(prev.sharePrice)).toFixed(2),
-        totalAssets: (parseFloat(prev.totalAssets) + parseFloat(amount)).toFixed(2)
+        vaultInfo: {
+          totalAssets: ethers.formatUnits(vaultInfo[0], 6),
+          totalAllocated: ethers.formatUnits(vaultInfo[1], 6),
+          activeStrategiesCount: Number(vaultInfo[2]),
+          vaultTokenBalance: ethers.formatUnits(vaultTokenBalance, 6),
+          assetBalance: ethers.formatUnits(assetBalance, 6),
+          assetAllowance: ethers.formatUnits(assetAllowance, 6),
+          maxDeposit: ethers.formatUnits(maxDeposit, 6),
+          maxWithdraw: ethers.formatUnits(maxWithdraw, 6),
+          performanceFeeRate: ethers.formatUnits(performanceFee, 2),
+          managementFeeRate: ethers.formatUnits(managementFee, 2)
+        },
+        strategies,
+        error: null
       }));
+    } catch (error) {
+      console.error('Failed to fetch vault info:', error);
+      setVaultState(prev => ({
+        ...prev,
+        error: error instanceof Error ? error.message : 'Failed to fetch vault info'
+      }));
+    } finally {
+      setLoading(false);
+    }
+  }, [wallet.isConnected, wallet.address, vaultState.vaultAddress, vaultState.assetAddress, getProvider]);
+
+  // Deposit assets into vault
+  const deposit = useCallback(async (amount: string) => {
+    if (!wallet.isConnected || !vaultState.vaultAddress) {
+      throw new Error('Wallet not connected or vault not configured');
+    }
+
+    setLoading(true);
+    try {
+      const signer = await getSigner();
+      const vaultContract = new ethers.Contract(vaultState.vaultAddress, VAULT_ABI, signer);
+      const assetContract = new ethers.Contract(vaultState.assetAddress, ASSET_ABI, signer);
+
+      const amountWei = ethers.parseUnits(amount, 6); // USDC has 6 decimals
+
+      // Check allowance
+      const allowance = await assetContract.allowance(wallet.address, vaultState.vaultAddress);
+      if (allowance < amountWei) {
+        // Approve spending
+        const approveTx = await assetContract.approve(vaultState.vaultAddress, amountWei);
+        await approveTx.wait();
+      }
+
+      // Deposit
+      const tx = await vaultContract.deposit(amountWei, wallet.address);
+      await tx.wait();
+
+      // Refresh vault info
+      await fetchVaultInfo();
 
       return tx;
     } catch (error) {
@@ -71,102 +214,127 @@ export function useVault(wallet: WalletState) {
     } finally {
       setLoading(false);
     }
-  };
+  }, [wallet.isConnected, wallet.address, vaultState.vaultAddress, vaultState.assetAddress, getSigner, fetchVaultInfo]);
 
-  const withdraw = async (amount: string) => {
-    if (!wallet.signer) throw new Error('Wallet not connected');
+  // Withdraw assets from vault
+  const withdraw = useCallback(async (amount: string) => {
+    if (!wallet.isConnected || !vaultState.vaultAddress) {
+      throw new Error('Wallet not connected or vault not configured');
+    }
 
     setLoading(true);
     try {
-      // Simulate withdrawal transaction
-      const tx = await wallet.signer.sendTransaction({
-        to: VAULT_ADDRESS,
-        value: ethers.parseEther('0'),
-        data: '0x'
-      });
+      const signer = await getSigner();
+      const vaultContract = new ethers.Contract(vaultState.vaultAddress, VAULT_ABI, signer);
 
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      // Update mock stats
-      const sharesToRedeem = parseFloat(amount) / parseFloat(vaultStats.sharePrice);
-      const newUserShares = parseFloat(vaultStats.userShares) - sharesToRedeem;
-      setVaultStats(prev => ({
-        ...prev,
-        userShares: Math.max(0, newUserShares).toFixed(2),
-        userAssets: Math.max(0, newUserShares * parseFloat(prev.sharePrice)).toFixed(2),
-        totalAssets: (parseFloat(prev.totalAssets) - parseFloat(amount)).toFixed(2)
-      }));
+      const amountWei = ethers.parseUnits(amount, 6); // USDC has 6 decimals
+
+      // Withdraw
+      const tx = await vaultContract.withdraw(amountWei, wallet.address, wallet.address);
+      await tx.wait();
+
+      // Refresh vault info
+      await fetchVaultInfo();
 
       return tx;
     } catch (error) {
-      console.error('Withdrawal failed:', error);
+      console.error('Withdraw failed:', error);
       throw error;
     } finally {
       setLoading(false);
     }
-  };
+  }, [wallet.isConnected, wallet.address, vaultState.vaultAddress, getSigner, fetchVaultInfo]);
 
-  const harvest = async () => {
-    if (!wallet.signer) throw new Error('Wallet not connected');
+  // Redeem vault tokens for assets
+  const redeem = useCallback(async (shares: string) => {
+    if (!wallet.isConnected || !vaultState.vaultAddress) {
+      throw new Error('Wallet not connected or vault not configured');
+    }
 
     setLoading(true);
     try {
-      // Simulate harvest transaction
-      const tx = await wallet.signer.sendTransaction({
-        to: VAULT_ADDRESS,
-        value: ethers.parseEther('0'),
-        data: '0x'
-      });
+      const signer = await getSigner();
+      const vaultContract = new ethers.Contract(vaultState.vaultAddress, VAULT_ABI, signer);
 
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      
-      // Simulate yield being added
-      const yieldAmount = parseFloat(vaultStats.totalAssets) * 0.001; // 0.1% yield
-      setVaultStats(prev => ({
-        ...prev,
-        totalAssets: (parseFloat(prev.totalAssets) + yieldAmount).toFixed(2),
-        sharePrice: ((parseFloat(prev.totalAssets) + yieldAmount) / parseFloat(prev.totalShares)).toFixed(3)
-      }));
+      const sharesWei = ethers.parseUnits(shares, 6); // Vault tokens have 6 decimals
+
+      // Redeem
+      const tx = await vaultContract.redeem(sharesWei, wallet.address, wallet.address);
+      await tx.wait();
+
+      // Refresh vault info
+      await fetchVaultInfo();
 
       return tx;
     } catch (error) {
-      console.error('Harvest failed:', error);
+      console.error('Redeem failed:', error);
       throw error;
     } finally {
       setLoading(false);
     }
-  };
+  }, [wallet.isConnected, wallet.address, vaultState.vaultAddress, getSigner, fetchVaultInfo]);
 
-  const rebalance = async (newAllocations: Record<string, number>) => {
-    if (!wallet.signer) throw new Error('Wallet not connected');
-
-    setLoading(true);
+  // Preview functions
+  const previewDeposit = useCallback(async (amount: string): Promise<string> => {
+    if (!vaultState.vaultAddress) return '0';
+    
     try {
-      // Simulate rebalancing transaction
-      const tx = await wallet.signer.sendTransaction({
-        to: VAULT_ADDRESS,
-        value: ethers.parseEther('0'),
-        data: '0x'
-      });
-
-      await new Promise(resolve => setTimeout(resolve, 3000));
-      
-      return tx;
+      const provider = await getProvider();
+      const vaultContract = new ethers.Contract(vaultState.vaultAddress, VAULT_ABI, provider);
+      const amountWei = ethers.parseUnits(amount, 6);
+      const shares = await vaultContract.previewDeposit(amountWei);
+      return ethers.formatUnits(shares, 6);
     } catch (error) {
-      console.error('Rebalancing failed:', error);
-      throw error;
-    } finally {
-      setLoading(false);
+      console.error('Preview deposit failed:', error);
+      return '0';
     }
-  };
+  }, [vaultState.vaultAddress, getProvider]);
+
+  const previewWithdraw = useCallback(async (amount: string): Promise<string> => {
+    if (!vaultState.vaultAddress) return '0';
+    
+    try {
+      const provider = await getProvider();
+      const vaultContract = new ethers.Contract(vaultState.vaultAddress, VAULT_ABI, provider);
+      const amountWei = ethers.parseUnits(amount, 6);
+      const shares = await vaultContract.previewWithdraw(amountWei);
+      return ethers.formatUnits(shares, 6);
+    } catch (error) {
+      console.error('Preview withdraw failed:', error);
+      return '0';
+    }
+  }, [vaultState.vaultAddress, getProvider]);
+
+  // Refresh vault data
+  const refresh = useCallback(() => {
+    fetchVaultInfo();
+  }, [fetchVaultInfo]);
+
+  // Set vault addresses
+  const setVaultAddresses = useCallback((vaultAddress: string, assetAddress: string) => {
+    setVaultState(prev => ({
+      ...prev,
+      vaultAddress,
+      assetAddress
+    }));
+  }, []);
+
+  // Fetch vault info when wallet connects or addresses change
+  useEffect(() => {
+    if (wallet.isConnected && vaultState.vaultAddress !== '0x0000000000000000000000000000000000000000') {
+      fetchVaultInfo();
+    }
+  }, [wallet.isConnected, vaultState.vaultAddress, fetchVaultInfo]);
 
   return {
-    vaultStats,
+    vaultState,
     loading,
     deposit,
     withdraw,
-    harvest,
-    rebalance,
-    VAULT_ADDRESS
+    redeem,
+    previewDeposit,
+    previewWithdraw,
+    refresh,
+    setVaultAddresses
   };
 }
