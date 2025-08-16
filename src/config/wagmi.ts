@@ -1,6 +1,6 @@
-import { createConfig, configureChains } from "wagmi";
+import { createConfig } from "wagmi";
 import { mainnet, polygon, bsc } from "wagmi/chains";
-import { publicProvider } from "@wagmi/core/providers/public";
+import { http } from "viem";
 import { MetaMaskConnector } from "@wagmi/core/connectors/metaMask";
 import { WalletConnectConnector } from "@wagmi/core/connectors/walletConnect";
 import { CoinbaseWalletConnector } from "@wagmi/core/connectors/coinbaseWallet";
@@ -10,13 +10,15 @@ export const projectId =
   import.meta.env.VITE_WALLETCONNECT_PROJECT_ID ||
   "YOUR_WALLETCONNECT_PROJECT_ID";
 
-const { chains, publicClient, webSocketPublicClient } = configureChains(
-  [mainnet, polygon, bsc],
-  [publicProvider()]
-);
+const chains = [mainnet, polygon, bsc];
 
 export const config = createConfig({
-  autoConnect: true,
+  chains,
+  transports: {
+    [mainnet.id]: http(),
+    [polygon.id]: http(),
+    [bsc.id]: http(),
+  },
   connectors: [
     new MetaMaskConnector({ chains }),
     new WalletConnectConnector({
@@ -32,8 +34,6 @@ export const config = createConfig({
       },
     }),
   ],
-  publicClient,
-  webSocketPublicClient,
 });
 
 export { chains };
