@@ -52,9 +52,10 @@ VITE_1INCH_API_KEY=your_1inch_api_key_here
 
 **1. Package Version Conflicts**
 
-- ✅ Fixed: Migrated to `@web3modal/wagmi` v4.0.0
+- ✅ Fixed: Migrated to `@web3modal/wagmi` v5.1.11
 - ✅ Removed deprecated `@web3modal/ethereum` and `@web3modal/react`
 - ✅ Added .npmrc for legacy peer deps
+- ✅ Added dependency overrides and resolutions to reduce deprecated package warnings
 
 **2. Build Failures**
 

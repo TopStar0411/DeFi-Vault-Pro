@@ -49,5 +49,31 @@
     "tailwindcss": "^3.3.6",
     "typescript": "^5.2.2",
     "vite": "^5.0.8"
+  },
+  "overrides": {
+    "glob": "^9.3.5",
+    "mkdirp": "^3.0.1",
+    "multiformats": "^12.0.1",
+    "qr": "^1.5.3",
+    "lru-cache": "^10.1.0",
+    "ethereumjs-abi": "^0.7.0",
+    "yaeti": "^1.0.0",
+    "har-validator": "^6.0.1",
+    "request": "^2.88.2",
+    "inflight": "^1.0.6",
+    "@paulmillr/qr": "^0.2.1"
+  },
+  "resolutions": {
+    "glob": "^9.3.5",
+    "mkdirp": "^3.0.1",
+    "multiformats": "^12.0.1",
+    "qr": "^1.5.3",
+    "lru-cache": "^10.1.0",
+    "ethereumjs-abi": "^0.7.0",
+    "yaeti": "^1.0.0",
+    "har-validator": "^6.0.1",
+    "request": "^2.88.2",
+    "inflight": "^1.0.6",
+    "@paulmillr/qr": "^1.5.3"
   }
 }
