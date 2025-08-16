@@ -1,0 +1,108 @@
+import React from 'react';
+import { Shield, BarChart3, Settings, Users, Lock, Wallet, ArrowLeftRight } from 'lucide-react';
+import { UserRole } from '../App';
+import { WalletState } from '../hooks/useWallet';
+
+interface HeaderProps {
+  activeTab: 'dashboard' | 'vault' | 'admin' | 'strategies' | 'security';
+  setActiveTab: (tab: 'dashboard' | 'vault' | 'admin' | 'strategies' | 'security') => void;
+  userRole: UserRole;
+  setUserRole: (role: UserRole) => void;
+  wallet: WalletState;
+  onOpenWallet: () => void;
+  onOpenSwap: () => void;
+}
+
+export function Header({ activeTab, setActiveTab, userRole, setUserRole, wallet, onOpenWallet, onOpenSwap }: HeaderProps) {
+  const navItems = [
+    { id: 'dashboard', label: 'Dashboard', icon: BarChart3 },
+    { id: 'vault', label: 'Vault', icon: Shield },
+    { id: 'strategies', label: 'Strategies', icon: Settings, requiresRole: ['admin', 'strategist'] },
+    { id: 'admin', label: 'Admin', icon: Users, requiresRole: ['admin'] },
+    { id: 'security', label: 'Security', icon: Lock, requiresRole: ['admin'] },
+  ] as const;
+
+  const roleColors = {
+    user: 'bg-blue-600',
+    strategist: 'bg-purple-600',
+    admin: 'bg-red-600'
+  };
+
+  const formatAddress = (address: string) => {
+    return `${address.slice(0, 6)}...${address.slice(-4)}`;
+  };
+
+  return (
+    <header className="bg-gray-800 border-b border-gray-700">
+      <div className="container mx-auto px-4 py-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-8">
+            <h1 className="text-2xl font-bold text-transparent bg-gradient-to-r from-cyan-400 to-purple-400 bg-clip-text">
+              DeFi Vault Pro
+            </h1>
+            <nav className="flex space-x-6">
+              {navItems.map(({ id, label, icon: Icon, requiresRole }) => {
+                const isVisible = !requiresRole || requiresRole.includes(userRole);
+                if (!isVisible) return null;
+                
+                return (
+                  <button
+                    key={id}
+                    onClick={() => setActiveTab(id)}
+                    className={`flex items-center space-x-2 px-3 py-2 rounded-lg transition-colors ${
+                      activeTab === id
+                        ? 'bg-cyan-600 text-white'
+                        : 'text-gray-300 hover:text-white hover:bg-gray-700'
+                    }`}
+                  >
+                    <Icon className="h-4 w-4" />
+                    <span>{label}</span>
+                  </button>
+                );
+              })}
+            </nav>
+          </div>
+          
+          <div className="flex items-center space-x-4">
+            {wallet.isConnected && (
+              <button
+                onClick={onOpenSwap}
+                className="flex items-center space-x-2 px-3 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors"
+              >
+                <ArrowLeftRight className="h-4 w-4" />
+                <span>Swap</span>
+              </button>
+            )}
+            
+            <div className="flex items-center space-x-2">
+              <span className="text-sm text-gray-400">Role:</span>
+              <select
+                value={userRole}
+                onChange={(e) => setUserRole(e.target.value as UserRole)}
+                className={`px-3 py-1 rounded-lg text-white text-sm ${roleColors[userRole]} border-none outline-none`}
+              >
+                <option value="user">User</option>
+                <option value="strategist">Strategist</option>
+                <option value="admin">Admin</option>
+              </select>
+            </div>
+            
+            <button
+              onClick={onOpenWallet}
+              className={`flex items-center space-x-2 px-4 py-2 rounded-lg transition-colors ${
+                wallet.isConnected
+                  ? 'bg-green-600 hover:bg-green-700'
+                  : 'bg-cyan-600 hover:bg-cyan-700'
+              }`}
+            >
+              <Wallet className="h-4 w-4" />
+              <span>
+                {wallet.isConnected ? formatAddress(wallet.address!) : 'Connect Wallet'}
+              </span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </header>
+  );
+}
