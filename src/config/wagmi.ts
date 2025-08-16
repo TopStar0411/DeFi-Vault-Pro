@@ -1,0 +1,36 @@
+import { createConfig, configureChains } from "wagmi";
+import { mainnet, polygon, bsc } from "wagmi/chains";
+import { publicProvider } from "wagmi/providers/public";
+import { MetaMaskConnector } from "wagmi/connectors/metaMask";
+import { WalletConnectConnector } from "wagmi/connectors/walletConnect";
+import { CoinbaseWalletConnector } from "wagmi/connectors/coinbaseWallet";
+
+const { chains, publicClient, webSocketPublicClient } = configureChains(
+  [mainnet, polygon, bsc],
+  [publicProvider()]
+);
+
+export const config = createConfig({
+  autoConnect: true,
+  connectors: [
+    new MetaMaskConnector({ chains }),
+    new WalletConnectConnector({
+      chains,
+      options: {
+        projectId:
+          import.meta.env.VITE_WALLETCONNECT_PROJECT_ID ||
+          "YOUR_WALLETCONNECT_PROJECT_ID",
+      },
+    }),
+    new CoinbaseWalletConnector({
+      chains,
+      options: {
+        appName: "DeFi Swap App",
+      },
+    }),
+  ],
+  publicClient,
+  webSocketPublicClient,
+});
+
+export { chains };

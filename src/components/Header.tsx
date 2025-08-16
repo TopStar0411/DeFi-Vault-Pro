@@ -1,11 +1,23 @@
-import React from 'react';
-import { Shield, BarChart3, Settings, Users, Lock, Wallet, ArrowLeftRight } from 'lucide-react';
-import { UserRole } from '../App';
-import { WalletState } from '../hooks/useWallet';
+import React from "react";
+import {
+  Shield,
+  BarChart3,
+  Settings,
+  Users,
+  Lock,
+  Wallet,
+  ArrowLeftRight,
+  ChevronDown,
+} from "lucide-react";
+import { UserRole } from "../App";
+import { WalletState } from "../hooks/useWallet";
+import { useWallet } from "../hooks/useWallet";
 
 interface HeaderProps {
-  activeTab: 'dashboard' | 'vault' | 'admin' | 'strategies' | 'security';
-  setActiveTab: (tab: 'dashboard' | 'vault' | 'admin' | 'strategies' | 'security') => void;
+  activeTab: "dashboard" | "vault" | "admin" | "strategies" | "security";
+  setActiveTab: (
+    tab: "dashboard" | "vault" | "admin" | "strategies" | "security"
+  ) => void;
   userRole: UserRole;
   setUserRole: (role: UserRole) => void;
   wallet: WalletState;
@@ -13,23 +25,59 @@ interface HeaderProps {
   onOpenSwap: () => void;
 }
 
-export function Header({ activeTab, setActiveTab, userRole, setUserRole, wallet, onOpenWallet, onOpenSwap }: HeaderProps) {
+export function Header({
+  activeTab,
+  setActiveTab,
+  userRole,
+  setUserRole,
+  wallet,
+  onOpenWallet,
+  onOpenSwap,
+}: HeaderProps) {
+  const { disconnectWallet } = useWallet();
+  const [showWalletMenu, setShowWalletMenu] = React.useState(false);
+
   const navItems = [
-    { id: 'dashboard', label: 'Dashboard', icon: BarChart3 },
-    { id: 'vault', label: 'Vault', icon: Shield },
-    { id: 'strategies', label: 'Strategies', icon: Settings, requiresRole: ['admin', 'strategist'] },
-    { id: 'admin', label: 'Admin', icon: Users, requiresRole: ['admin'] },
-    { id: 'security', label: 'Security', icon: Lock, requiresRole: ['admin'] },
+    { id: "dashboard", label: "Dashboard", icon: BarChart3 },
+    { id: "vault", label: "Vault", icon: Shield },
+    {
+      id: "strategies",
+      label: "Strategies",
+      icon: Settings,
+      requiresRole: ["admin", "strategist"],
+    },
+    { id: "admin", label: "Admin", icon: Users, requiresRole: ["admin"] },
+    { id: "security", label: "Security", icon: Lock, requiresRole: ["admin"] },
   ] as const;
 
   const roleColors = {
-    user: 'bg-blue-600',
-    strategist: 'bg-purple-600',
-    admin: 'bg-red-600'
+    user: "bg-blue-600",
+    strategist: "bg-purple-600",
+    admin: "bg-red-600",
   };
 
   const formatAddress = (address: string) => {
     return `${address.slice(0, 6)}...${address.slice(-4)}`;
+  };
+
+  const getNetworkName = (chainId: number | null) => {
+    switch (chainId) {
+      case 1:
+        return "Ethereum";
+      case 137:
+        return "Polygon";
+      case 56:
+        return "BSC";
+      case 42161:
+        return "Arbitrum";
+      default:
+        return "Unknown";
+    }
+  };
+
+  const handleDisconnect = () => {
+    disconnectWallet();
+    setShowWalletMenu(false);
   };
 
   return (
@@ -42,17 +90,18 @@ export function Header({ activeTab, setActiveTab, userRole, setUserRole, wallet,
             </h1>
             <nav className="flex space-x-6">
               {navItems.map(({ id, label, icon: Icon, requiresRole }) => {
-                const isVisible = !requiresRole || requiresRole.includes(userRole);
+                const isVisible =
+                  !requiresRole || requiresRole.includes(userRole);
                 if (!isVisible) return null;
-                
+
                 return (
                   <button
                     key={id}
                     onClick={() => setActiveTab(id)}
                     className={`flex items-center space-x-2 px-3 py-2 rounded-lg transition-colors ${
                       activeTab === id
-                        ? 'bg-cyan-600 text-white'
-                        : 'text-gray-300 hover:text-white hover:bg-gray-700'
+                        ? "bg-cyan-600 text-white"
+                        : "text-gray-300 hover:text-white hover:bg-gray-700"
                     }`}
                   >
                     <Icon className="h-4 w-4" />
@@ -62,7 +111,7 @@ export function Header({ activeTab, setActiveTab, userRole, setUserRole, wallet,
               })}
             </nav>
           </div>
-          
+
           <div className="flex items-center space-x-4">
             {wallet.isConnected && (
               <button
@@ -73,7 +122,7 @@ export function Header({ activeTab, setActiveTab, userRole, setUserRole, wallet,
                 <span>Swap</span>
               </button>
             )}
-            
+
             <div className="flex items-center space-x-2">
               <span className="text-sm text-gray-400">Role:</span>
               <select
@@ -86,20 +135,54 @@ export function Header({ activeTab, setActiveTab, userRole, setUserRole, wallet,
                 <option value="admin">Admin</option>
               </select>
             </div>
-            
-            <button
-              onClick={onOpenWallet}
-              className={`flex items-center space-x-2 px-4 py-2 rounded-lg transition-colors ${
-                wallet.isConnected
-                  ? 'bg-green-600 hover:bg-green-700'
-                  : 'bg-cyan-600 hover:bg-cyan-700'
-              }`}
-            >
-              <Wallet className="h-4 w-4" />
-              <span>
-                {wallet.isConnected ? formatAddress(wallet.address!) : 'Connect Wallet'}
-              </span>
-            </button>
+
+            {wallet.isConnected ? (
+              <div className="relative">
+                <button
+                  onClick={() => setShowWalletMenu(!showWalletMenu)}
+                  className="flex items-center space-x-2 px-4 py-2 bg-green-600 hover:bg-green-700 rounded-lg transition-colors"
+                >
+                  <div className="w-2 h-2 bg-green-400 rounded-full"></div>
+                  <span>{formatAddress(wallet.address!)}</span>
+                  <ChevronDown className="h-4 w-4" />
+                </button>
+
+                {showWalletMenu && (
+                  <div className="absolute right-0 mt-2 w-64 bg-gray-700 rounded-lg shadow-lg border border-gray-600 z-50">
+                    <div className="p-4 space-y-3">
+                      <div className="text-sm">
+                        <div className="text-gray-400">Network</div>
+                        <div className="text-white">
+                          {getNetworkName(wallet.chainId)}
+                        </div>
+                      </div>
+                      <div className="text-sm">
+                        <div className="text-gray-400">Balance</div>
+                        <div className="text-white">
+                          {parseFloat(wallet.balance).toFixed(4)} ETH
+                        </div>
+                      </div>
+                      <div className="border-t border-gray-600 pt-3">
+                        <button
+                          onClick={handleDisconnect}
+                          className="w-full text-left text-red-400 hover:text-red-300 text-sm"
+                        >
+                          Disconnect Wallet
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <button
+                onClick={onOpenWallet}
+                className="flex items-center space-x-2 px-4 py-2 bg-cyan-600 hover:bg-cyan-700 text-white rounded-lg transition-colors"
+              >
+                <Wallet className="h-4 w-4" />
+                <span>Connect Wallet</span>
+              </button>
+            )}
           </div>
         </div>
       </div>

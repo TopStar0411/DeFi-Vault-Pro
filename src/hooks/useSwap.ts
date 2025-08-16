@@ -1,51 +1,51 @@
-import { useState } from 'react';
-import { ethers } from 'ethers';
-import { WalletState } from './useWallet';
-import { Token } from './useTokens';
-
-export interface SwapQuote {
-  inputAmount: string;
-  outputAmount: string;
-  priceImpact: string;
-  fee: string;
-  route: string[];
-}
+import { useState } from "react";
+import { ethers } from "ethers";
+import { WalletState } from "./useWallet";
+import {
+  swapService,
+  SwapQuote,
+  SwapTransaction,
+  TokenInfo,
+} from "../services/swapService";
 
 export function useSwap(wallet: WalletState) {
   const [loading, setLoading] = useState(false);
   const [quote, setQuote] = useState<SwapQuote | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   const getQuote = async (
-    tokenIn: Token,
-    tokenOut: Token,
-    amountIn: string
+    fromToken: TokenInfo,
+    toToken: TokenInfo,
+    amountIn: string,
+    slippage: number = 1
   ): Promise<SwapQuote> => {
+    if (!wallet.address) {
+      throw new Error("Wallet not connected");
+    }
+
     setLoading(true);
+    setError(null);
+
     try {
-      // Simulate API call to DEX aggregator (like 1inch, Paraswap, etc.)
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      const inputAmount = parseFloat(amountIn);
-      const exchangeRate = tokenOut.price / tokenIn.price;
-      const slippage = 0.005; // 0.5% slippage
-      const fee = 0.003; // 0.3% fee
-      
-      const outputAmount = inputAmount * exchangeRate * (1 - slippage - fee);
-      const priceImpact = (slippage * 100).toFixed(2);
-      const feeAmount = (inputAmount * fee).toFixed(4);
+      // Convert amount to wei based on token decimals
+      const amountInWei = ethers
+        .parseUnits(amountIn, fromToken.decimals)
+        .toString();
 
-      const swapQuote: SwapQuote = {
-        inputAmount: amountIn,
-        outputAmount: outputAmount.toFixed(6),
-        priceImpact: priceImpact + '%',
-        fee: feeAmount,
-        route: [tokenIn.symbol, tokenOut.symbol]
-      };
+      const quote = await swapService.getQuote(
+        fromToken.address,
+        toToken.address,
+        amountInWei,
+        wallet.address,
+        wallet.chainId || 1
+      );
 
-      setQuote(swapQuote);
-      return swapQuote;
+      setQuote(quote);
+      return quote;
     } catch (error) {
-      console.error('Failed to get quote:', error);
+      const errorMessage =
+        error instanceof Error ? error.message : "Failed to get quote";
+      setError(errorMessage);
       throw error;
     } finally {
       setLoading(false);
@@ -53,101 +53,155 @@ export function useSwap(wallet: WalletState) {
   };
 
   const executeSwap = async (
-    tokenIn: Token,
-    tokenOut: Token,
+    fromToken: TokenInfo,
+    toToken: TokenInfo,
     amountIn: string,
-    minAmountOut: string
+    slippage: number = 1
   ) => {
-    if (!wallet.signer) throw new Error('Wallet not connected');
+    if (!wallet.address) {
+      throw new Error("Wallet not connected");
+    }
 
     setLoading(true);
-    try {
-      // In production, this would call a DEX router contract
-      const routerAddress = '0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D'; // Uniswap V2 Router example
-      
-      // Simulate swap transaction
-      const tx = await wallet.signer.sendTransaction({
-        to: routerAddress,
-        value: tokenIn.symbol === 'ETH' ? ethers.parseEther(amountIn) : ethers.parseEther('0'),
-        data: '0x', // This would contain the encoded swap function call
-        gasLimit: 200000
-      });
+    setError(null);
 
-      // Wait for confirmation
-      await tx.wait();
-      
-      return tx;
+    try {
+      // Get the swap transaction data
+      const amountInWei = ethers
+        .parseUnits(amountIn, fromToken.decimals)
+        .toString();
+
+      const swapTx = await swapService.executeSwap(
+        fromToken.address,
+        toToken.address,
+        amountInWei,
+        wallet.address,
+        slippage,
+        wallet.chainId || 1
+      );
+
+      // Execute the transaction using the wallet
+      const provider =
+        (await wallet.provider) || new ethers.BrowserProvider(window.ethereum);
+      const signer = await provider.getSigner();
+
+      const transaction = {
+        to: swapTx.to,
+        data: swapTx.data,
+        value: swapTx.value,
+        gasLimit: swapTx.gas,
+      };
+
+      const tx = await signer.sendTransaction(transaction);
+      const receipt = await tx.wait();
+
+      return receipt;
     } catch (error) {
-      console.error('Swap failed:', error);
+      const errorMessage =
+        error instanceof Error ? error.message : "Swap failed";
+      setError(errorMessage);
       throw error;
     } finally {
       setLoading(false);
     }
   };
 
-  const addLiquidity = async (
-    tokenA: Token,
-    tokenB: Token,
-    amountA: string,
-    amountB: string
+  const approveToken = async (
+    tokenAddress: string,
+    spenderAddress: string,
+    amount: string,
+    decimals: number = 18
   ) => {
-    if (!wallet.signer) throw new Error('Wallet not connected');
+    if (!wallet.address) {
+      throw new Error("Wallet not connected");
+    }
 
     setLoading(true);
-    try {
-      const routerAddress = '0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D';
-      
-      const tx = await wallet.signer.sendTransaction({
-        to: routerAddress,
-        value: ethers.parseEther('0'),
-        data: '0x',
-        gasLimit: 300000
-      });
+    setError(null);
 
-      await tx.wait();
-      return tx;
+    try {
+      const provider =
+        (await wallet.provider) || new ethers.BrowserProvider(window.ethereum);
+      const signer = await provider.getSigner();
+
+      const erc20Abi = [
+        "function approve(address spender, uint256 amount) returns (bool)",
+        "function allowance(address owner, address spender) view returns (uint256)",
+      ];
+
+      const tokenContract = new ethers.Contract(tokenAddress, erc20Abi, signer);
+
+      // Check current allowance
+      const currentAllowance = await tokenContract.allowance(
+        wallet.address,
+        spenderAddress
+      );
+      const requiredAmount = ethers.parseUnits(amount, decimals);
+
+      if (currentAllowance < requiredAmount) {
+        const tx = await tokenContract.approve(spenderAddress, requiredAmount);
+        await tx.wait();
+        return tx;
+      }
+
+      return null; // No approval needed
     } catch (error) {
-      console.error('Add liquidity failed:', error);
+      const errorMessage =
+        error instanceof Error ? error.message : "Approval failed";
+      setError(errorMessage);
       throw error;
     } finally {
       setLoading(false);
     }
   };
 
-  const removeLiquidity = async (
-    tokenA: Token,
-    tokenB: Token,
-    liquidity: string
-  ) => {
-    if (!wallet.signer) throw new Error('Wallet not connected');
-
-    setLoading(true);
-    try {
-      const routerAddress = '0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D';
-      
-      const tx = await wallet.signer.sendTransaction({
-        to: routerAddress,
-        value: ethers.parseEther('0'),
-        data: '0x',
-        gasLimit: 250000
-      });
-
-      await tx.wait();
-      return tx;
-    } catch (error) {
-      console.error('Remove liquidity failed:', error);
-      throw error;
-    } finally {
-      setLoading(false);
+  const getTokenBalance = async (
+    tokenAddress: string,
+    decimals: number = 18
+  ): Promise<string> => {
+    if (!wallet.address) {
+      return "0";
     }
+
+    try {
+      const provider =
+        (await wallet.provider) || new ethers.BrowserProvider(window.ethereum);
+
+      if (tokenAddress === "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeEeE") {
+        // Native token (ETH)
+        const balance = await provider.getBalance(wallet.address);
+        return ethers.formatEther(balance);
+      } else {
+        // ERC20 token
+        const erc20Abi = [
+          "function balanceOf(address owner) view returns (uint256)",
+        ];
+        const tokenContract = new ethers.Contract(
+          tokenAddress,
+          erc20Abi,
+          provider
+        );
+        const balance = await tokenContract.balanceOf(wallet.address);
+        return ethers.formatUnits(balance, decimals);
+      }
+    } catch (error) {
+      console.error("Failed to get token balance:", error);
+      return "0";
+    }
+  };
+
+  const clearError = () => {
+    setError(null);
   };
 
   return {
     loading,
     quote,
+    error,
     getQuote,
     executeSwap,
-    addLiquidity,
-    removeLiquidity
+    approveToken,
+    getTokenBalance,
+    clearError,
   };
 }

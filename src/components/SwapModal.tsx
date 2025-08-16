@@ -1,8 +1,16 @@
-import React, { useState, useEffect } from 'react';
-import { X, ArrowDown, Settings, RefreshCw } from 'lucide-react';
-import { Token } from '../hooks/useTokens';
-import { useSwap } from '../hooks/useSwap';
-import { WalletState } from '../hooks/useWallet';
+import React, { useState, useEffect } from "react";
+import {
+  X,
+  ArrowDown,
+  Settings,
+  RefreshCw,
+  AlertCircle,
+  CheckCircle,
+} from "lucide-react";
+import { Token } from "../hooks/useTokens";
+import { useSwap } from "../hooks/useSwap";
+import { WalletState } from "../hooks/useWallet";
+import { ethers } from "ethers";
 
 interface SwapModalProps {
   isOpen: boolean;
@@ -14,35 +22,105 @@ interface SwapModalProps {
 export function SwapModal({ isOpen, onClose, tokens, wallet }: SwapModalProps) {
   const [fromToken, setFromToken] = useState<Token | null>(tokens[0] || null);
   const [toToken, setToToken] = useState<Token | null>(tokens[1] || null);
-  const [fromAmount, setFromAmount] = useState('');
-  const [toAmount, setToAmount] = useState('');
-  const [slippage, setSlippage] = useState(0.5);
+  const [fromAmount, setFromAmount] = useState("");
+  const [toAmount, setToAmount] = useState("");
+  const [slippage, setSlippage] = useState(1.0);
   const [showSettings, setShowSettings] = useState(false);
+  const [needsApproval, setNeedsApproval] = useState(false);
+  const [isApproving, setIsApproving] = useState(false);
 
-  const { loading, quote, getQuote, executeSwap } = useSwap(wallet);
+  const {
+    loading,
+    quote,
+    error,
+    getQuote,
+    executeSwap,
+    approveToken,
+    clearError,
+  } = useSwap(wallet);
 
   useEffect(() => {
     if (fromToken && toToken && fromAmount && parseFloat(fromAmount) > 0) {
-      getQuote(fromToken, toToken, fromAmount).then((quote) => {
-        setToAmount(quote.outputAmount);
-      }).catch(console.error);
+      getQuote(fromToken, toToken, fromAmount, slippage)
+        .then((quote) => {
+          setToAmount(
+            ethers.formatUnits(quote.toTokenAmount, toToken.decimals)
+          );
+          checkApproval();
+        })
+        .catch(console.error);
     } else {
-      setToAmount('');
+      setToAmount("");
+      setNeedsApproval(false);
     }
-  }, [fromToken, toToken, fromAmount]);
+  }, [fromToken, toToken, fromAmount, slippage]);
 
-  if (!isOpen) return null;
+  const checkApproval = async () => {
+    if (
+      !fromToken ||
+      !fromAmount ||
+      !wallet.address ||
+      fromToken.symbol === "ETH"
+    ) {
+      setNeedsApproval(false);
+      return;
+    }
+
+    try {
+      const provider = new ethers.BrowserProvider(window.ethereum);
+      const erc20Abi = [
+        "function allowance(address owner, address spender) view returns (uint256)",
+      ];
+      const tokenContract = new ethers.Contract(
+        fromToken.address,
+        erc20Abi,
+        provider
+      );
+
+      // 1inch router address
+      const routerAddress = "0x1111111254EEB25477B68fb85Ed929f73A960582";
+      const allowance = await tokenContract.allowance(
+        wallet.address,
+        routerAddress
+      );
+      const requiredAmount = ethers.parseUnits(fromAmount, fromToken.decimals);
+
+      setNeedsApproval(allowance < requiredAmount);
+    } catch (error) {
+      console.error("Failed to check approval:", error);
+      setNeedsApproval(false);
+    }
+  };
+
+  const handleApprove = async () => {
+    if (!fromToken || !fromAmount || !wallet.address) return;
+
+    setIsApproving(true);
+    try {
+      const routerAddress = "0x1111111254EEB25477B68fb85Ed929f73A960582";
+      await approveToken(
+        fromToken.address,
+        routerAddress,
+        fromAmount,
+        fromToken.decimals
+      );
+      setNeedsApproval(false);
+    } catch (error) {
+      console.error("Approval failed:", error);
+    } finally {
+      setIsApproving(false);
+    }
+  };
 
   const handleSwap = async () => {
     if (!fromToken || !toToken || !fromAmount || !wallet.isConnected) return;
 
     try {
-      const minAmountOut = (parseFloat(toAmount) * (1 - slippage / 100)).toString();
-      await executeSwap(fromToken, toToken, fromAmount, minAmountOut);
+      clearError();
+      await executeSwap(fromToken, toToken, fromAmount, slippage);
       onClose();
     } catch (error) {
-      console.error('Swap failed:', error);
-      alert('Swap failed. Please try again.');
+      console.error("Swap failed:", error);
     }
   };
 
@@ -58,6 +136,8 @@ export function SwapModal({ isOpen, onClose, tokens, wallet }: SwapModalProps) {
       setFromAmount(fromToken.balance);
     }
   };
+
+  if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
@@ -82,16 +162,18 @@ export function SwapModal({ isOpen, onClose, tokens, wallet }: SwapModalProps) {
 
         {showSettings && (
           <div className="mb-6 p-4 bg-gray-700 rounded-lg">
-            <h3 className="text-sm font-medium text-white mb-3">Slippage Tolerance</h3>
+            <h3 className="text-sm font-medium text-white mb-3">
+              Slippage Tolerance
+            </h3>
             <div className="flex space-x-2">
-              {[0.1, 0.5, 1.0].map((value) => (
+              {[0.1, 0.5, 1.0, 2.0].map((value) => (
                 <button
                   key={value}
                   onClick={() => setSlippage(value)}
                   className={`px-3 py-1 rounded text-sm ${
                     slippage === value
-                      ? 'bg-cyan-600 text-white'
-                      : 'bg-gray-600 text-gray-300 hover:bg-gray-500'
+                      ? "bg-cyan-600 text-white"
+                      : "bg-gray-600 text-gray-300 hover:bg-gray-500"
                   }`}
                 >
                   {value}%
@@ -110,20 +192,27 @@ export function SwapModal({ isOpen, onClose, tokens, wallet }: SwapModalProps) {
           </div>
         )}
 
+        {error && (
+          <div className="mb-4 p-3 bg-red-900/20 border border-red-500 rounded-lg flex items-center space-x-2">
+            <AlertCircle className="h-4 w-4 text-red-400" />
+            <span className="text-red-400 text-sm">{error}</span>
+          </div>
+        )}
+
         <div className="space-y-4">
           {/* From Token */}
           <div className="bg-gray-700 rounded-lg p-4">
             <div className="flex items-center justify-between mb-2">
               <span className="text-sm text-gray-400">From</span>
               <span className="text-sm text-gray-400">
-                Balance: {fromToken?.balance || '0'}
+                Balance: {fromToken?.balance || "0"}
               </span>
             </div>
             <div className="flex items-center space-x-3">
               <select
-                value={fromToken?.symbol || ''}
+                value={fromToken?.symbol || ""}
                 onChange={(e) => {
-                  const token = tokens.find(t => t.symbol === e.target.value);
+                  const token = tokens.find((t) => t.symbol === e.target.value);
                   setFromToken(token || null);
                 }}
                 className="bg-gray-600 text-white rounded-lg px-3 py-2 min-w-0 flex-shrink-0"
@@ -167,14 +256,14 @@ export function SwapModal({ isOpen, onClose, tokens, wallet }: SwapModalProps) {
             <div className="flex items-center justify-between mb-2">
               <span className="text-sm text-gray-400">To</span>
               <span className="text-sm text-gray-400">
-                Balance: {toToken?.balance || '0'}
+                Balance: {toToken?.balance || "0"}
               </span>
             </div>
             <div className="flex items-center space-x-3">
               <select
-                value={toToken?.symbol || ''}
+                value={toToken?.symbol || ""}
                 onChange={(e) => {
-                  const token = tokens.find(t => t.symbol === e.target.value);
+                  const token = tokens.find((t) => t.symbol === e.target.value);
                   setToToken(token || null);
                 }}
                 className="bg-gray-600 text-white rounded-lg px-3 py-2 min-w-0 flex-shrink-0"
@@ -188,7 +277,7 @@ export function SwapModal({ isOpen, onClose, tokens, wallet }: SwapModalProps) {
               <div className="flex-1">
                 <input
                   type="text"
-                  value={loading ? 'Loading...' : toAmount}
+                  value={loading ? "Loading..." : toAmount}
                   readOnly
                   placeholder="0.0"
                   className="w-full bg-transparent text-white text-right text-lg outline-none"
@@ -202,42 +291,73 @@ export function SwapModal({ isOpen, onClose, tokens, wallet }: SwapModalProps) {
             <div className="bg-gray-700 rounded-lg p-4 space-y-2">
               <div className="flex justify-between text-sm">
                 <span className="text-gray-400">Price Impact</span>
-                <span className="text-white">{quote.priceImpact}</span>
+                <span className="text-white">{quote.priceImpact}%</span>
               </div>
               <div className="flex justify-between text-sm">
                 <span className="text-gray-400">Fee</span>
-                <span className="text-white">{quote.fee} {fromToken?.symbol}</span>
+                <span className="text-white">
+                  {quote.fee} {fromToken?.symbol}
+                </span>
               </div>
               <div className="flex justify-between text-sm">
-                <span className="text-gray-400">Route</span>
-                <span className="text-white">{quote.route.join(' → ')}</span>
+                <span className="text-gray-400">Minimum Received</span>
+                <span className="text-white">
+                  {ethers.formatUnits(
+                    quote.toTokenAmount,
+                    toToken?.decimals || 18
+                  )}{" "}
+                  {toToken?.symbol}
+                </span>
               </div>
             </div>
           )}
 
-          {/* Swap Button */}
-          <button
-            onClick={handleSwap}
-            disabled={!wallet.isConnected || !fromAmount || !toAmount || loading}
-            className={`w-full py-3 px-4 rounded-lg font-medium transition-colors ${
-              !wallet.isConnected || !fromAmount || !toAmount || loading
-                ? 'bg-gray-600 text-gray-400 cursor-not-allowed'
-                : 'bg-gradient-to-r from-cyan-600 to-purple-600 hover:from-cyan-700 hover:to-purple-700 text-white'
-            }`}
-          >
-            {loading ? (
-              <div className="flex items-center justify-center space-x-2">
-                <RefreshCw className="h-4 w-4 animate-spin" />
-                <span>Swapping...</span>
-              </div>
-            ) : !wallet.isConnected ? (
-              'Connect Wallet'
-            ) : !fromAmount || !toAmount ? (
-              'Enter Amount'
-            ) : (
-              `Swap ${fromToken?.symbol} for ${toToken?.symbol}`
-            )}
-          </button>
+          {/* Action Buttons */}
+          {needsApproval && fromToken?.symbol !== "ETH" ? (
+            <button
+              onClick={handleApprove}
+              disabled={isApproving}
+              className={`w-full py-3 px-4 rounded-lg font-medium transition-colors ${
+                isApproving
+                  ? "bg-gray-600 text-gray-400 cursor-not-allowed"
+                  : "bg-yellow-600 hover:bg-yellow-700 text-white"
+              }`}
+            >
+              {isApproving ? (
+                <div className="flex items-center justify-center space-x-2">
+                  <RefreshCw className="h-4 w-4 animate-spin" />
+                  <span>Approving...</span>
+                </div>
+              ) : (
+                `Approve ${fromToken?.symbol}`
+              )}
+            </button>
+          ) : (
+            <button
+              onClick={handleSwap}
+              disabled={
+                !wallet.isConnected || !fromAmount || !toAmount || loading
+              }
+              className={`w-full py-3 px-4 rounded-lg font-medium transition-colors ${
+                !wallet.isConnected || !fromAmount || !toAmount || loading
+                  ? "bg-gray-600 text-gray-400 cursor-not-allowed"
+                  : "bg-gradient-to-r from-cyan-600 to-purple-600 hover:from-cyan-700 hover:to-purple-700 text-white"
+              }`}
+            >
+              {loading ? (
+                <div className="flex items-center justify-center space-x-2">
+                  <RefreshCw className="h-4 w-4 animate-spin" />
+                  <span>Swapping...</span>
+                </div>
+              ) : !wallet.isConnected ? (
+                "Connect Wallet"
+              ) : !fromAmount || !toAmount ? (
+                "Enter Amount"
+              ) : (
+                `Swap ${fromToken?.symbol} for ${toToken?.symbol}`
+              )}
+            </button>
+          )}
         </div>
       </div>
     </div>

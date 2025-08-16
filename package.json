@@ -10,8 +10,12 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@1inch/fusion-sdk": "^1.0.0",
+    "@1inch/limit-order-protocol-utils": "^3.0.0",
     "@tanstack/react-query": "^5.85.3",
     "@wagmi/core": "^2.19.0",
+    "@web3modal/ethereum": "^3.5.7",
+    "@web3modal/react": "^3.5.7",
     "ethers": "^6.15.0",
     "lucide-react": "^0.344.0",
     "react": "^18.3.1",
