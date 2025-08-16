@@ -271,6 +271,9 @@ contract Vault is ERC4626, Ownable, ReentrancyGuard, Pausable {
         // Transfer assets to strategy
         asset().transfer(strategyAddress, amount);
         
+        // Call strategy's deposit function
+        IStrategy(strategyAddress).deposit(amount);
+        
         emit StrategyAllocated(strategyAddress, amount);
     }
 
@@ -335,8 +338,8 @@ contract Vault is ERC4626, Ownable, ReentrancyGuard, Pausable {
         uint256 fee = (totalValue * managementFeeRate) / BASIS_POINTS;
         
         if (fee > 0) {
-            // Mint shares to owner as fee
-            _mint(owner(), fee);
+            // Transfer fee to owner instead of minting shares
+            asset().transfer(owner(), fee);
             lastFeeCollection = block.timestamp;
             
             emit FeeCollected(fee);
@@ -394,10 +397,26 @@ contract Vault is ERC4626, Ownable, ReentrancyGuard, Pausable {
 
     /**
      * @dev Get total assets in the vault
-     * @return Total assets including strategy allocations
+     * @return Total assets including strategy allocations and returns
      */
     function totalAssets() public view override returns (uint256) {
-        return asset().balanceOf(address(this)) + totalAllocated;
+        uint256 vaultBalance = asset().balanceOf(address(this));
+        uint256 strategyValue = 0;
+        
+        // Calculate total value from all active strategies
+        for (uint256 i = 0; i < activeStrategies.length; i++) {
+            address strategyAddress = activeStrategies[i];
+            if (strategies[strategyAddress].isActive) {
+                try IStrategy(strategyAddress).totalValue() returns (uint256 value) {
+                    strategyValue += value;
+                } catch {
+                    // If strategy call fails, use allocated amount as fallback
+                    strategyValue += strategies[strategyAddress].allocatedAmount;
+                }
+            }
+        }
+        
+        return vaultBalance + strategyValue;
     }
 
     /**
@@ -455,4 +474,6 @@ interface IStrategy {
     function withdraw(uint256 amount) external;
     function harvest() external;
     function emergencyWithdraw() external;
+    function deposit(uint256 amount) external;
+    function totalValue() external view returns (uint256);
 }

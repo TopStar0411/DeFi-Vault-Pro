@@ -1,19 +1,19 @@
-import React, { useState, useEffect } from 'react';
-import { 
-  Shield, 
-  TrendingUp, 
-  Download, 
-  Upload, 
-  RefreshCw, 
-  AlertCircle, 
+import React, { useState, useEffect } from "react";
+import {
+  Shield,
+  TrendingUp,
+  Download,
+  Upload,
+  RefreshCw,
+  AlertCircle,
   CheckCircle,
   DollarSign,
   Users,
-  Settings
-} from 'lucide-react';
-import { WalletState } from '../hooks/useWallet';
-import { Token } from '../hooks/useTokens';
-import { useVault, VaultInfo, StrategyInfo } from '../hooks/useVault';
+  Settings,
+} from "lucide-react";
+import { WalletState } from "../hooks/useWallet";
+import { Token } from "../hooks/useTokens";
+import { useVault, VaultInfo, StrategyInfo } from "../hooks/useVault";
 
 interface VaultInterfaceProps {
   wallet: WalletState;
@@ -22,30 +22,43 @@ interface VaultInterfaceProps {
 }
 
 export function VaultInterface({ wallet, tokens, vault }: VaultInterfaceProps) {
-  const [depositAmount, setDepositAmount] = useState('');
-  const [withdrawAmount, setWithdrawAmount] = useState('');
-  const [redeemShares, setRedeemShares] = useState('');
-  const [previewShares, setPreviewShares] = useState('');
-  const [previewAssets, setPreviewAssets] = useState('');
-  const [activeTab, setActiveTab] = useState<'deposit' | 'withdraw' | 'info'>('deposit');
+  const [depositAmount, setDepositAmount] = useState("");
+  const [withdrawAmount, setWithdrawAmount] = useState("");
+  const [redeemShares, setRedeemShares] = useState("");
+  const [previewShares, setPreviewShares] = useState("");
+  const [previewAssets, setPreviewAssets] = useState("");
+  const [activeTab, setActiveTab] = useState<"deposit" | "withdraw" | "info">(
+    "deposit"
+  );
 
-  const { vaultState, loading, deposit, withdraw, redeem, previewDeposit, previewWithdraw, refresh } = vault;
+  const {
+    vaultState,
+    loading,
+    deposit,
+    withdraw,
+    redeem,
+    previewDeposit,
+    previewWithdraw,
+    refresh,
+  } = vault;
 
   // Preview deposit shares when amount changes
   useEffect(() => {
     if (depositAmount && parseFloat(depositAmount) > 0) {
       previewDeposit(depositAmount).then(setPreviewShares).catch(console.error);
     } else {
-      setPreviewShares('');
+      setPreviewShares("");
     }
   }, [depositAmount, previewDeposit]);
 
   // Preview withdraw shares when amount changes
   useEffect(() => {
     if (withdrawAmount && parseFloat(withdrawAmount) > 0) {
-      previewWithdraw(withdrawAmount).then(setPreviewAssets).catch(console.error);
+      previewWithdraw(withdrawAmount)
+        .then(setPreviewAssets)
+        .catch(console.error);
     } else {
-      setPreviewAssets('');
+      setPreviewAssets("");
     }
   }, [withdrawAmount, previewWithdraw]);
 
@@ -54,10 +67,10 @@ export function VaultInterface({ wallet, tokens, vault }: VaultInterfaceProps) {
 
     try {
       await deposit(depositAmount);
-      setDepositAmount('');
-      setPreviewShares('');
+      setDepositAmount("");
+      setPreviewShares("");
     } catch (error) {
-      console.error('Deposit failed:', error);
+      console.error("Deposit failed:", error);
     }
   };
 
@@ -66,10 +79,10 @@ export function VaultInterface({ wallet, tokens, vault }: VaultInterfaceProps) {
 
     try {
       await withdraw(withdrawAmount);
-      setWithdrawAmount('');
-      setPreviewAssets('');
+      setWithdrawAmount("");
+      setPreviewAssets("");
     } catch (error) {
-      console.error('Withdraw failed:', error);
+      console.error("Withdraw failed:", error);
     }
   };
 
@@ -78,9 +91,9 @@ export function VaultInterface({ wallet, tokens, vault }: VaultInterfaceProps) {
 
     try {
       await redeem(redeemShares);
-      setRedeemShares('');
+      setRedeemShares("");
     } catch (error) {
-      console.error('Redeem failed:', error);
+      console.error("Redeem failed:", error);
     }
   };
 
@@ -106,7 +119,9 @@ export function VaultInterface({ wallet, tokens, vault }: VaultInterfaceProps) {
     return (
       <div className="text-center py-20">
         <Shield className="h-16 w-16 text-gray-400 mx-auto mb-4" />
-        <h2 className="text-2xl font-semibold text-gray-300 mb-2">Connect Your Wallet</h2>
+        <h2 className="text-2xl font-semibold text-gray-300 mb-2">
+          Connect Your Wallet
+        </h2>
         <p className="text-gray-400">Connect your wallet to access the vault</p>
       </div>
     );
@@ -116,13 +131,29 @@ export function VaultInterface({ wallet, tokens, vault }: VaultInterfaceProps) {
     return (
       <div className="text-center py-20">
         <RefreshCw className="h-16 w-16 text-gray-400 mx-auto mb-4 animate-spin" />
-        <h2 className="text-2xl font-semibold text-gray-300 mb-2">Loading Vault</h2>
+        <h2 className="text-2xl font-semibold text-gray-300 mb-2">
+          Loading Vault
+        </h2>
         <p className="text-gray-400">Fetching vault information...</p>
       </div>
     );
   }
 
   const vaultInfo = vaultState.vaultInfo;
+
+  // Add error handling for invalid numbers
+  const formatNumber = (value: string, decimals: number = 2): string => {
+    try {
+      const num = parseFloat(value);
+      if (isNaN(num)) return "0.00";
+      return num.toLocaleString(undefined, {
+        minimumFractionDigits: 0,
+        maximumFractionDigits: decimals,
+      });
+    } catch {
+      return "0.00";
+    }
+  };
 
   return (
     <div className="max-w-6xl mx-auto">
@@ -138,7 +169,7 @@ export function VaultInterface({ wallet, tokens, vault }: VaultInterfaceProps) {
             disabled={loading}
             className="flex items-center space-x-2 px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition-colors disabled:opacity-50"
           >
-            <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+            <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
             <span>Refresh</span>
           </button>
         </div>
@@ -150,31 +181,39 @@ export function VaultInterface({ wallet, tokens, vault }: VaultInterfaceProps) {
               <DollarSign className="h-5 w-5 text-green-400" />
               <span className="text-gray-400 text-sm">Total Assets</span>
             </div>
-            <p className="text-2xl font-bold text-white">${parseFloat(vaultInfo.totalAssets).toLocaleString()}</p>
+            <p className="text-2xl font-bold text-white">
+              ${formatNumber(vaultInfo.totalAssets)}
+            </p>
           </div>
-          
+
           <div className="bg-gray-700 rounded-lg p-4">
             <div className="flex items-center space-x-2 mb-2">
               <TrendingUp className="h-5 w-5 text-blue-400" />
               <span className="text-gray-400 text-sm">Your Position</span>
             </div>
-            <p className="text-2xl font-bold text-white">${parseFloat(vaultInfo.vaultTokenBalance).toLocaleString()}</p>
+            <p className="text-2xl font-bold text-white">
+              ${formatNumber(vaultInfo.vaultTokenBalance)}
+            </p>
           </div>
-          
+
           <div className="bg-gray-700 rounded-lg p-4">
             <div className="flex items-center space-x-2 mb-2">
               <Users className="h-5 w-5 text-purple-400" />
               <span className="text-gray-400 text-sm">Active Strategies</span>
             </div>
-            <p className="text-2xl font-bold text-white">{vaultInfo.activeStrategiesCount}</p>
+            <p className="text-2xl font-bold text-white">
+              {vaultInfo.activeStrategiesCount}
+            </p>
           </div>
-          
+
           <div className="bg-gray-700 rounded-lg p-4">
             <div className="flex items-center space-x-2 mb-2">
               <Settings className="h-5 w-5 text-yellow-400" />
               <span className="text-gray-400 text-sm">Performance Fee</span>
             </div>
-            <p className="text-2xl font-bold text-white">{vaultInfo.performanceFeeRate}%</p>
+            <p className="text-2xl font-bold text-white">
+              {formatNumber(vaultInfo.performanceFeeRate)}%
+            </p>
           </div>
         </div>
       </div>
@@ -195,31 +234,31 @@ export function VaultInterface({ wallet, tokens, vault }: VaultInterfaceProps) {
             {/* Tab Navigation */}
             <div className="flex space-x-4 mb-6">
               <button
-                onClick={() => setActiveTab('deposit')}
+                onClick={() => setActiveTab("deposit")}
                 className={`px-4 py-2 rounded-lg transition-colors ${
-                  activeTab === 'deposit'
-                    ? 'bg-cyan-600 text-white'
-                    : 'text-gray-400 hover:text-white hover:bg-gray-700'
+                  activeTab === "deposit"
+                    ? "bg-cyan-600 text-white"
+                    : "text-gray-400 hover:text-white hover:bg-gray-700"
                 }`}
               >
                 Deposit
               </button>
               <button
-                onClick={() => setActiveTab('withdraw')}
+                onClick={() => setActiveTab("withdraw")}
                 className={`px-4 py-2 rounded-lg transition-colors ${
-                  activeTab === 'withdraw'
-                    ? 'bg-cyan-600 text-white'
-                    : 'text-gray-400 hover:text-white hover:bg-gray-700'
+                  activeTab === "withdraw"
+                    ? "bg-cyan-600 text-white"
+                    : "text-gray-400 hover:text-white hover:bg-gray-700"
                 }`}
               >
                 Withdraw
               </button>
               <button
-                onClick={() => setActiveTab('info')}
+                onClick={() => setActiveTab("info")}
                 className={`px-4 py-2 rounded-lg transition-colors ${
-                  activeTab === 'info'
-                    ? 'bg-cyan-600 text-white'
-                    : 'text-gray-400 hover:text-white hover:bg-gray-700'
+                  activeTab === "info"
+                    ? "bg-cyan-600 text-white"
+                    : "text-gray-400 hover:text-white hover:bg-gray-700"
                 }`}
               >
                 Info
@@ -227,13 +266,16 @@ export function VaultInterface({ wallet, tokens, vault }: VaultInterfaceProps) {
             </div>
 
             {/* Deposit Tab */}
-            {activeTab === 'deposit' && (
+            {activeTab === "deposit" && (
               <div className="space-y-4">
                 <div className="bg-gray-700 rounded-lg p-4">
                   <div className="flex items-center justify-between mb-2">
-                    <span className="text-sm text-gray-400">Amount to Deposit</span>
                     <span className="text-sm text-gray-400">
-                      Balance: {parseFloat(vaultInfo.assetBalance).toFixed(2)} USDC
+                      Amount to Deposit
+                    </span>
+                    <span className="text-sm text-gray-400">
+                      Balance: {parseFloat(vaultInfo.assetBalance).toFixed(2)}{" "}
+                      USDC
                     </span>
                   </div>
                   <div className="flex items-center space-x-3">
@@ -253,14 +295,17 @@ export function VaultInterface({ wallet, tokens, vault }: VaultInterfaceProps) {
                   </div>
                   {previewShares && (
                     <p className="text-sm text-gray-400 mt-2">
-                      You will receive: {parseFloat(previewShares).toFixed(6)} vUSDC
+                      You will receive: {parseFloat(previewShares).toFixed(6)}{" "}
+                      vUSDC
                     </p>
                   )}
                 </div>
 
                 <button
                   onClick={handleDeposit}
-                  disabled={!depositAmount || parseFloat(depositAmount) <= 0 || loading}
+                  disabled={
+                    !depositAmount || parseFloat(depositAmount) <= 0 || loading
+                  }
                   className="w-full py-3 px-4 bg-gradient-to-r from-cyan-600 to-purple-600 hover:from-cyan-700 hover:to-purple-700 text-white rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {loading ? (
@@ -279,13 +324,16 @@ export function VaultInterface({ wallet, tokens, vault }: VaultInterfaceProps) {
             )}
 
             {/* Withdraw Tab */}
-            {activeTab === 'withdraw' && (
+            {activeTab === "withdraw" && (
               <div className="space-y-4">
                 <div className="bg-gray-700 rounded-lg p-4">
                   <div className="flex items-center justify-between mb-2">
-                    <span className="text-sm text-gray-400">Amount to Withdraw</span>
                     <span className="text-sm text-gray-400">
-                      Available: {parseFloat(vaultInfo.maxWithdraw).toFixed(2)} USDC
+                      Amount to Withdraw
+                    </span>
+                    <span className="text-sm text-gray-400">
+                      Available: {parseFloat(vaultInfo.maxWithdraw).toFixed(2)}{" "}
+                      USDC
                     </span>
                   </div>
                   <div className="flex items-center space-x-3">
@@ -305,14 +353,19 @@ export function VaultInterface({ wallet, tokens, vault }: VaultInterfaceProps) {
                   </div>
                   {previewAssets && (
                     <p className="text-sm text-gray-400 mt-2">
-                      You will burn: {parseFloat(previewAssets).toFixed(6)} vUSDC
+                      You will burn: {parseFloat(previewAssets).toFixed(6)}{" "}
+                      vUSDC
                     </p>
                   )}
                 </div>
 
                 <button
                   onClick={handleWithdraw}
-                  disabled={!withdrawAmount || parseFloat(withdrawAmount) <= 0 || loading}
+                  disabled={
+                    !withdrawAmount ||
+                    parseFloat(withdrawAmount) <= 0 ||
+                    loading
+                  }
                   className="w-full py-3 px-4 bg-gradient-to-r from-red-600 to-orange-600 hover:from-red-700 hover:to-orange-700 text-white rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {loading ? (
@@ -330,12 +383,18 @@ export function VaultInterface({ wallet, tokens, vault }: VaultInterfaceProps) {
 
                 {/* Redeem Section */}
                 <div className="border-t border-gray-600 pt-4">
-                  <h3 className="text-lg font-semibold text-white mb-3">Redeem vUSDC</h3>
+                  <h3 className="text-lg font-semibold text-white mb-3">
+                    Redeem vUSDC
+                  </h3>
                   <div className="bg-gray-700 rounded-lg p-4">
                     <div className="flex items-center justify-between mb-2">
-                      <span className="text-sm text-gray-400">vUSDC to Redeem</span>
                       <span className="text-sm text-gray-400">
-                        Balance: {parseFloat(vaultInfo.vaultTokenBalance).toFixed(6)} vUSDC
+                        vUSDC to Redeem
+                      </span>
+                      <span className="text-sm text-gray-400">
+                        Balance:{" "}
+                        {parseFloat(vaultInfo.vaultTokenBalance).toFixed(6)}{" "}
+                        vUSDC
                       </span>
                     </div>
                     <div className="flex items-center space-x-3">
@@ -357,54 +416,74 @@ export function VaultInterface({ wallet, tokens, vault }: VaultInterfaceProps) {
 
                   <button
                     onClick={handleRedeem}
-                    disabled={!redeemShares || parseFloat(redeemShares) <= 0 || loading}
+                    disabled={
+                      !redeemShares || parseFloat(redeemShares) <= 0 || loading
+                    }
                     className="w-full py-3 px-4 bg-gray-600 hover:bg-gray-500 text-white rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed mt-3"
                   >
-                    {loading ? 'Redeeming...' : 'Redeem vUSDC'}
+                    {loading ? "Redeeming..." : "Redeem vUSDC"}
                   </button>
                 </div>
               </div>
             )}
 
             {/* Info Tab */}
-            {activeTab === 'info' && (
+            {activeTab === "info" && (
               <div className="space-y-4">
                 <div className="bg-gray-700 rounded-lg p-4">
-                  <h3 className="text-lg font-semibold text-white mb-3">Vault Information</h3>
+                  <h3 className="text-lg font-semibold text-white mb-3">
+                    Vault Information
+                  </h3>
                   <div className="space-y-2 text-sm">
                     <div className="flex justify-between">
                       <span className="text-gray-400">Total Assets:</span>
-                      <span className="text-white">${parseFloat(vaultInfo.totalAssets).toLocaleString()}</span>
+                      <span className="text-white">
+                        ${parseFloat(vaultInfo.totalAssets).toLocaleString()}
+                      </span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-gray-400">Total Allocated:</span>
-                      <span className="text-white">${parseFloat(vaultInfo.totalAllocated).toLocaleString()}</span>
+                      <span className="text-white">
+                        ${parseFloat(vaultInfo.totalAllocated).toLocaleString()}
+                      </span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-gray-400">Performance Fee:</span>
-                      <span className="text-white">{vaultInfo.performanceFeeRate}%</span>
+                      <span className="text-white">
+                        {vaultInfo.performanceFeeRate}%
+                      </span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-gray-400">Management Fee:</span>
-                      <span className="text-white">{vaultInfo.managementFeeRate}%</span>
+                      <span className="text-white">
+                        {vaultInfo.managementFeeRate}%
+                      </span>
                     </div>
                   </div>
                 </div>
 
                 <div className="bg-gray-700 rounded-lg p-4">
-                  <h3 className="text-lg font-semibold text-white mb-3">Your Position</h3>
+                  <h3 className="text-lg font-semibold text-white mb-3">
+                    Your Position
+                  </h3>
                   <div className="space-y-2 text-sm">
                     <div className="flex justify-between">
                       <span className="text-gray-400">vUSDC Balance:</span>
-                      <span className="text-white">{parseFloat(vaultInfo.vaultTokenBalance).toFixed(6)}</span>
+                      <span className="text-white">
+                        {parseFloat(vaultInfo.vaultTokenBalance).toFixed(6)}
+                      </span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-gray-400">USDC Balance:</span>
-                      <span className="text-white">{parseFloat(vaultInfo.assetBalance).toFixed(2)}</span>
+                      <span className="text-white">
+                        {parseFloat(vaultInfo.assetBalance).toFixed(2)}
+                      </span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-gray-400">Max Withdraw:</span>
-                      <span className="text-white">{parseFloat(vaultInfo.maxWithdraw).toFixed(2)}</span>
+                      <span className="text-white">
+                        {parseFloat(vaultInfo.maxWithdraw).toFixed(2)}
+                      </span>
                     </div>
                   </div>
                 </div>
@@ -415,8 +494,10 @@ export function VaultInterface({ wallet, tokens, vault }: VaultInterfaceProps) {
 
         {/* Right Column - Strategies */}
         <div className="bg-gray-800 rounded-xl p-6">
-          <h2 className="text-xl font-semibold text-white mb-4">Active Strategies</h2>
-          
+          <h2 className="text-xl font-semibold text-white mb-4">
+            Active Strategies
+          </h2>
+
           {vaultState.strategies.length === 0 ? (
             <div className="text-center py-8">
               <Settings className="h-12 w-12 text-gray-400 mx-auto mb-3" />
@@ -425,23 +506,38 @@ export function VaultInterface({ wallet, tokens, vault }: VaultInterfaceProps) {
           ) : (
             <div className="space-y-4">
               {vaultState.strategies.map((strategy: StrategyInfo) => (
-                <div key={strategy.address} className="bg-gray-700 rounded-lg p-4">
+                <div
+                  key={strategy.address}
+                  className="bg-gray-700 rounded-lg p-4"
+                >
                   <div className="flex items-center justify-between mb-2">
-                    <h3 className="font-semibold text-white">{strategy.name}</h3>
-                    <div className={`w-2 h-2 rounded-full ${strategy.isActive ? 'bg-green-400' : 'bg-red-400'}`}></div>
+                    <h3 className="font-semibold text-white">
+                      {strategy.name}
+                    </h3>
+                    <div
+                      className={`w-2 h-2 rounded-full ${
+                        strategy.isActive ? "bg-green-400" : "bg-red-400"
+                      }`}
+                    ></div>
                   </div>
                   <div className="space-y-1 text-sm">
                     <div className="flex justify-between">
                       <span className="text-gray-400">Allocated:</span>
-                      <span className="text-white">${parseFloat(strategy.allocatedAmount).toLocaleString()}</span>
+                      <span className="text-white">
+                        ${parseFloat(strategy.allocatedAmount).toLocaleString()}
+                      </span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-gray-400">Performance Fee:</span>
-                      <span className="text-white">{strategy.performanceFee}%</span>
+                      <span className="text-white">
+                        {strategy.performanceFee}%
+                      </span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-gray-400">Last Harvest:</span>
-                      <span className="text-white text-xs">{strategy.lastHarvest}</span>
+                      <span className="text-white text-xs">
+                        {strategy.lastHarvest}
+                      </span>
                     </div>
                   </div>
                 </div>
