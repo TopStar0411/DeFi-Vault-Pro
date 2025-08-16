@@ -1,9 +1,9 @@
 import { createConfig, configureChains } from "wagmi";
 import { mainnet, polygon, bsc } from "wagmi/chains";
-import { publicProvider } from "wagmi/providers/public";
-import { MetaMaskConnector } from "wagmi/connectors/metaMask";
-import { WalletConnectConnector } from "wagmi/connectors/walletConnect";
-import { CoinbaseWalletConnector } from "wagmi/connectors/coinbaseWallet";
+import { publicProvider } from "@wagmi/core/providers/public";
+import { MetaMaskConnector } from "@wagmi/core/connectors/metaMask";
+import { WalletConnectConnector } from "@wagmi/core/connectors/walletConnect";
+import { CoinbaseWalletConnector } from "@wagmi/core/connectors/coinbaseWallet";
 
 // Get projectId from environment variable
 export const projectId =

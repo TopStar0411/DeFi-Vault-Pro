@@ -56,6 +56,7 @@ VITE_1INCH_API_KEY=your_1inch_api_key_here
 - ✅ Removed deprecated `@web3modal/ethereum` and `@web3modal/react`
 - ✅ Added .npmrc for legacy peer deps
 - ✅ Added dependency overrides and resolutions to reduce deprecated package warnings
+- ✅ Fixed wagmi import paths for v2 compatibility
 
 **2. Build Failures**
 
