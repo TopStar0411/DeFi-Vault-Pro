@@ -13,10 +13,14 @@
 Set these in your Vercel project settings:
 
 ```env
-# Optional: For production features
-VITE_1INCH_API_KEY=your_1inch_api_key_here
+# Required: For Web3Modal functionality
 VITE_WALLETCONNECT_PROJECT_ID=your_walletconnect_project_id_here
+
+# Optional: For 1inch swap functionality
+VITE_1INCH_API_KEY=your_1inch_api_key_here
 ```
+
+**Important**: You need to get a WalletConnect Project ID from [cloud.walletconnect.com](https://cloud.walletconnect.com/)
 
 ### 3. Deployment Steps
 
@@ -36,7 +40,7 @@ VITE_WALLETCONNECT_PROJECT_ID=your_walletconnect_project_id_here
 3. **Environment Variables**
 
    - Add the environment variables listed above
-   - These are optional for basic functionality
+   - `VITE_WALLETCONNECT_PROJECT_ID` is required for wallet connections
 
 4. **Deploy**
    - Click "Deploy"
@@ -48,24 +52,27 @@ VITE_WALLETCONNECT_PROJECT_ID=your_walletconnect_project_id_here
 
 **1. Package Version Conflicts**
 
-- ✅ Fixed: Updated package.json with compatible versions
+- ✅ Fixed: Migrated to `@web3modal/wagmi` v4.0.0
+- ✅ Removed deprecated `@web3modal/ethereum` and `@web3modal/react`
 - ✅ Added .npmrc for legacy peer deps
 
 **2. Build Failures**
 
 - Check build logs in Vercel dashboard
 - Ensure all dependencies are properly installed
+- Verify environment variables are set
 
 **3. Runtime Errors**
 
 - Check browser console for errors
-- Verify environment variables are set correctly
+- Verify WalletConnect Project ID is set correctly
+- Ensure Web3Modal is properly configured
 
 ### 5. Post-Deployment
 
 1. **Test Functionality**
 
-   - Connect wallet
+   - Connect wallet using Web3Modal
    - Test basic navigation
    - Verify components load correctly
 
@@ -96,7 +103,16 @@ npm run build
 npm run preview
 ```
 
-### 8. Support
+### 8. Web3Modal Configuration
+
+The project now uses the latest Web3Modal v5 with Wagmi integration:
+
+- **Package**: `@web3modal/wagmi` v5.1.11
+- **Configuration**: Automatic wallet detection
+- **Supported Wallets**: MetaMask, WalletConnect, Coinbase Wallet, and more
+- **Features**: Multi-chain support, automatic connection management
+
+### 9. Support
 
 If you encounter issues:
 
@@ -104,7 +120,8 @@ If you encounter issues:
 2. Verify package versions are compatible
 3. Ensure environment variables are set
 4. Test locally first with `npm run build`
+5. Verify WalletConnect Project ID is valid
 
 ---
 
-**Note**: The project is configured to work with Vercel's build system. All dependencies have been updated to compatible versions.
+**Note**: The project has been updated to use the latest Web3Modal v5 with improved wallet connection handling and better compatibility with Vercel deployment.

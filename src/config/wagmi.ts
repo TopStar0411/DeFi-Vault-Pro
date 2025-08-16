@@ -5,6 +5,11 @@ import { MetaMaskConnector } from "wagmi/connectors/metaMask";
 import { WalletConnectConnector } from "wagmi/connectors/walletConnect";
 import { CoinbaseWalletConnector } from "wagmi/connectors/coinbaseWallet";
 
+// Get projectId from environment variable
+export const projectId =
+  import.meta.env.VITE_WALLETCONNECT_PROJECT_ID ||
+  "YOUR_WALLETCONNECT_PROJECT_ID";
+
 const { chains, publicClient, webSocketPublicClient } = configureChains(
   [mainnet, polygon, bsc],
   [publicProvider()]
@@ -17,9 +22,7 @@ export const config = createConfig({
     new WalletConnectConnector({
       chains,
       options: {
-        projectId:
-          import.meta.env.VITE_WALLETCONNECT_PROJECT_ID ||
-          "YOUR_WALLETCONNECT_PROJECT_ID",
+        projectId,
       },
     }),
     new CoinbaseWalletConnector({

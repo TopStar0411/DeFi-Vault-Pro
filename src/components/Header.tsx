@@ -9,6 +9,7 @@ import {
   ArrowLeftRight,
   ChevronDown,
 } from "lucide-react";
+import { useWeb3Modal } from "@web3modal/wagmi/react";
 import { UserRole } from "../App";
 import { WalletState } from "../hooks/useWallet";
 import { useWallet } from "../hooks/useWallet";
@@ -35,6 +36,7 @@ export function Header({
   onOpenSwap,
 }: HeaderProps) {
   const { disconnectWallet } = useWallet();
+  const { open } = useWeb3Modal();
   const [showWalletMenu, setShowWalletMenu] = React.useState(false);
 
   const navItems = [
@@ -72,6 +74,14 @@ export function Header({
         return "Arbitrum";
       default:
         return "Unknown";
+    }
+  };
+
+  const handleConnect = async () => {
+    try {
+      await open();
+    } catch (error) {
+      console.error("Failed to open wallet modal:", error);
     }
   };
 
@@ -176,7 +186,7 @@ export function Header({
               </div>
             ) : (
               <button
-                onClick={onOpenWallet}
+                onClick={handleConnect}
                 className="flex items-center space-x-2 px-4 py-2 bg-cyan-600 hover:bg-cyan-700 text-white rounded-lg transition-colors"
               >
                 <Wallet className="h-4 w-4" />

@@ -8,7 +8,6 @@ import { VaultInterface } from "./components/VaultInterface";
 import { AdminPanel } from "./components/AdminPanel";
 import { StrategyManager } from "./components/StrategyManager";
 import { SecurityMonitor } from "./components/SecurityMonitor";
-import { WalletModal } from "./components/WalletModal";
 import { SwapModal } from "./components/SwapModal";
 
 export type UserRole = "user" | "admin" | "strategist";
@@ -18,7 +17,6 @@ function App() {
     "dashboard" | "vault" | "admin" | "strategies" | "security"
   >("dashboard");
   const [userRole, setUserRole] = useState<UserRole>("user");
-  const [showWalletModal, setShowWalletModal] = useState(false);
   const [showSwapModal, setShowSwapModal] = useState(false);
 
   const { wallet, disconnectWallet, switchNetwork } = useWallet();
@@ -72,15 +70,10 @@ function App() {
         userRole={userRole}
         setUserRole={setUserRole}
         wallet={wallet}
-        onOpenWallet={() => setShowWalletModal(true)}
+        onOpenWallet={() => {}} // Web3Modal handles this now
         onOpenSwap={() => setShowSwapModal(true)}
       />
       <main className="container mx-auto px-4 py-8">{renderContent()}</main>
-
-      <WalletModal
-        isOpen={showWalletModal}
-        onClose={() => setShowWalletModal(false)}
-      />
 
       <SwapModal
         isOpen={showSwapModal}

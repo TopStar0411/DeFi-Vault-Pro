@@ -3,7 +3,6 @@ import {
   useBalance,
   useNetwork,
   useSwitchNetwork,
-  useConnect,
   useDisconnect,
 } from "wagmi";
 import { useQuery } from "@tanstack/react-query";
@@ -23,12 +22,6 @@ export interface WalletState {
 export function useWallet() {
   const { address, isConnected } = useAccount();
   const { chain } = useNetwork();
-  const {
-    connect,
-    connectors,
-    isConnecting,
-    error: connectError,
-  } = useConnect();
   const { disconnect } = useDisconnect();
   const { switchNetwork } = useSwitchNetwork();
 
@@ -46,13 +39,6 @@ export function useWallet() {
     const provider = await getProvider();
     if (!provider) return null;
     return provider.getSigner();
-  };
-
-  const connectWallet = async (connectorId: string) => {
-    const connector = connectors.find((c) => c.id === connectorId);
-    if (connector) {
-      connect({ connector });
-    }
   };
 
   const disconnectWallet = () => {
@@ -112,14 +98,12 @@ export function useWallet() {
     chainId: chain?.id || null,
     provider: null, // Will be created on demand
     signer: null, // Will be created on demand
-    isConnecting,
-    error: connectError?.message || null,
+    isConnecting: false, // Web3Modal handles this
+    error: null, // Web3Modal handles errors
   };
 
   return {
     wallet,
-    connectors,
-    connectWallet,
     disconnectWallet,
     switchNetwork,
     sendTransaction,

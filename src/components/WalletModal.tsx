@@ -1,5 +1,6 @@
 import React from "react";
-import { X, Wallet, Shield, Zap } from "lucide-react";
+import { X, Wallet, Shield } from "lucide-react";
+import { useWeb3Modal } from "@web3modal/wagmi/react";
 import { useWallet } from "../hooks/useWallet";
 
 interface WalletModalProps {
@@ -8,42 +9,19 @@ interface WalletModalProps {
 }
 
 export function WalletModal({ isOpen, onClose }: WalletModalProps) {
-  const { connectors, connectWallet, wallet } = useWallet();
+  const { open } = useWeb3Modal();
+  const { wallet } = useWallet();
 
   if (!isOpen) return null;
 
-  const handleConnect = async (connectorId: string) => {
+  const handleConnect = async () => {
     try {
-      await connectWallet(connectorId);
+      await open();
       onClose();
     } catch (error) {
       console.error("Failed to connect wallet:", error);
     }
   };
-
-  const walletOptions = [
-    {
-      id: "metaMask",
-      name: "MetaMask",
-      description: "Connect with MetaMask wallet",
-      icon: "🦊",
-      color: "from-orange-500 to-orange-600",
-    },
-    {
-      id: "walletConnect",
-      name: "WalletConnect",
-      description: "Connect with any wallet",
-      icon: "🔗",
-      color: "from-blue-500 to-blue-600",
-    },
-    {
-      id: "coinbaseWallet",
-      name: "Coinbase Wallet",
-      description: "Connect with Coinbase Wallet",
-      icon: "🪙",
-      color: "from-green-500 to-green-600",
-    },
-  ];
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
@@ -56,40 +34,22 @@ export function WalletModal({ isOpen, onClose }: WalletModalProps) {
         </div>
 
         <div className="space-y-4">
-          {walletOptions.map((option) => {
-            const connector = connectors.find((c) => c.id === option.id);
-            if (!connector) return null;
-
-            return (
-              <button
-                key={option.id}
-                onClick={() => handleConnect(option.id)}
-                disabled={!connector.ready}
-                className={`w-full p-4 rounded-lg border border-gray-600 hover:border-gray-500 transition-all ${
-                  !connector.ready
-                    ? "opacity-50 cursor-not-allowed"
-                    : "hover:bg-gray-700"
-                }`}
-              >
-                <div className="flex items-center space-x-4">
-                  <div
-                    className={`w-12 h-12 rounded-lg bg-gradient-to-r ${option.color} flex items-center justify-center text-2xl`}
-                  >
-                    {option.icon}
-                  </div>
-                  <div className="flex-1 text-left">
-                    <h3 className="text-white font-medium">{option.name}</h3>
-                    <p className="text-gray-400 text-sm">
-                      {option.description}
-                    </p>
-                  </div>
-                  {!connector.ready && (
-                    <span className="text-red-400 text-xs">Not Available</span>
-                  )}
-                </div>
-              </button>
-            );
-          })}
+          <button
+            onClick={handleConnect}
+            className="w-full p-4 rounded-lg border border-gray-600 hover:border-gray-500 transition-all hover:bg-gray-700"
+          >
+            <div className="flex items-center space-x-4">
+              <div className="w-12 h-12 rounded-lg bg-gradient-to-r from-blue-500 to-purple-600 flex items-center justify-center text-2xl">
+                <Wallet className="h-6 w-6 text-white" />
+              </div>
+              <div className="flex-1 text-left">
+                <h3 className="text-white font-medium">Connect Wallet</h3>
+                <p className="text-gray-400 text-sm">
+                  Choose from MetaMask, WalletConnect, Coinbase Wallet, and more
+                </p>
+              </div>
+            </div>
+          </button>
         </div>
 
         <div className="mt-6 p-4 bg-gray-700 rounded-lg">
